@@ -1,0 +1,208 @@
+# ShapeRouter Types
+
+> **Git policy — never auto-commit or auto-push.** Leave your work in the working tree.
+> Run `git commit`, `git push`, `gh pr create`, or `scripts/push_all.sh` **only when the user
+> explicitly asks in that turn**. Approval for an earlier change does not carry forward, and
+> finishing a task is not permission to commit it.
+
+TypeScript type definitions for ShapeRouter API - LLM structured output platform.
+
+**npm**: `@sudobility/shaperouter_types` (public)
+
+## Tech Stack
+
+- **Language**: TypeScript
+- **Runtime**: Bun
+- **Package Manager**: Bun (do not use npm/yarn/pnpm for installing dependencies)
+- **Build**: TypeScript compiler (dual ESM/CJS)
+- **Test**: Vitest
+
+## Project Structure
+
+```
+src/
+├── index.ts          # All type definitions and response helpers
+└── index.test.ts     # Type tests
+dist/
+├── index.js          # ESM build
+├── index.cjs         # CommonJS build
+└── index.d.ts        # Type declarations
+```
+
+## Commands
+
+```bash
+bun run build        # Build ESM + CJS
+bun run build:esm    # Build ESM only
+bun run build:cjs    # Build CJS only
+bun run clean        # Remove dist/
+bun run test         # Run Vitest
+bun run typecheck    # TypeScript check
+bun run lint         # Run ESLint
+bun run format       # Format with Prettier
+bun run verify       # Typecheck + lint + build
+```
+
+## Type Categories
+
+### Enums
+- `LlmProvider` - 'openai' | 'gemini' | 'anthropic' | 'lm_studio'
+- `HttpMethod` - 'GET' | 'POST'
+
+### Entity Types (Database Models)
+- `User` - User account
+- `LlmApiKey` / `LlmApiKeySafe` - LLM API keys (safe version excludes encrypted data)
+- `Project` - User projects
+- `Endpoint` - AI endpoint configurations
+- `UsageAnalytics` - Request tracking
+- `UserSettings` - User preferences
+
+### Request Types
+- `UserCreateRequest`, `UserUpdateRequest`
+- `LlmApiKeyCreateRequest`, `LlmApiKeyUpdateRequest`
+- `ProjectCreateRequest`, `ProjectUpdateRequest`
+- `EndpointCreateRequest`, `EndpointUpdateRequest`
+- `AiExecutionRequest`
+
+### Response Types
+- `AiExecutionResponse`, `AiPromptResponse`
+- `AnalyticsResponse`
+- `RefreshApiKeyResponse`, `GetApiKeyResponse`
+- `HealthCheckData`
+
+### Query Parameter Types
+- `ProjectQueryParams`
+- `EndpointQueryParams`
+- `UsageAnalyticsQueryParams`
+
+### Utility Types
+- `JsonSchema` - JSON Schema definition
+- `ApiResponse<T>` - Standard API response wrapper (re-exported)
+- `PaginatedResponse<T>` - Paginated list response (re-exported)
+
+### Response Helpers
+```typescript
+import { successResponse, errorResponse } from '@sudobility/shaperouter_types';
+
+// Create success response
+const response = successResponse({ id: '123', name: 'Test' });
+// { success: true, data: { id: '123', name: 'Test' }, timestamp: '...' }
+
+// Create error response
+const error = errorResponse('Something went wrong');
+// { success: false, error: 'Something went wrong', timestamp: '...' }
+```
+
+## Usage
+
+```typescript
+import type {
+  User,
+  Project,
+  Endpoint,
+  LlmProvider,
+  AiExecutionRequest,
+  AiExecutionResponse,
+} from '@sudobility/shaperouter_types';
+
+import { successResponse, errorResponse } from '@sudobility/shaperouter_types';
+```
+
+## Peer Dependencies
+
+- `@sudobility/types` - Common Sudobility types (re-exported)
+
+## Publishing
+
+```bash
+bun run verify          # All checks
+npm publish             # Publish to npm (public)
+```
+
+## Dual Build
+
+Supports both ESM and CommonJS:
+
+```json
+{
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts"
+}
+```
+
+## Package Hierarchy
+
+This is the base types package used by all other ShapeRouter packages:
+
+```
+shaperouter_types (this package)
+    ↑
+shaperouter_client (API hooks)
+    ↑
+shaperouter_lib (business logic)
+    ↑
+shaperouter_app (frontend)
+shaperouter_api (backend)
+```
+
+## Workspace Context
+
+This project is part of the **ShapeRouter** multi-project workspace at the parent directory. See `../CLAUDE.md` for the full architecture, dependency graph, and build order.
+
+## Downstream Impact
+
+This is the **most impactful package** in the ShapeRouter dependency chain. Changes cascade widely.
+
+| Downstream Consumer | Relationship |
+|---------------------|-------------|
+| `shaperouter_client` | Direct dependency |
+| `shaperouter_lib` | Transitive via shaperouter_client |
+| `shaperouter_app` | Transitive + direct dependency |
+| `shaperouter_api` | Direct dependency |
+
+After making changes:
+1. `bun run verify` in this project
+2. `npm publish`
+3. Update in dependency order: `shaperouter_client` -> `shaperouter_lib` -> `shaperouter_app`, and `shaperouter_api`
+
+**Be extremely careful with breaking changes.** Renaming or removing a type/field breaks multiple projects. Prefer additive changes (new optional fields, new types).
+
+## Local Dev Workflow
+
+```bash
+# In this project:
+bun link
+
+# In each consuming project:
+cd ../shaperouter_client && bun link @sudobility/shaperouter_types
+cd ../shaperouter_api && bun link @sudobility/shaperouter_types
+
+# Rebuild after changes:
+bun run build
+
+# Then rebuild consumers in order:
+cd ../shaperouter_client && bun run build
+cd ../shaperouter_lib && bun run build
+
+# When done, unlink in each consumer:
+bun unlink @sudobility/shaperouter_types && bun install
+```
+
+## Pre-Commit Checklist
+
+```bash
+bun run verify    # Runs: typecheck -> lint -> build (does NOT include tests)
+bun run test      # Run tests separately
+```
+
+## Gotchas
+
+- **Dual ESM/CJS build** -- produces both `.js` (ESM) and `.cjs` (CJS) via two tsconfig files. The CJS build uses a rename step that copies from `dist-cjs/` to `dist/`.
+- **Re-exports from `@sudobility/types`** -- `ApiResponse<T>`, `successResponse()`, `errorResponse()` are re-exported. Do not duplicate these.
+- **Response helpers are runtime values, not just types** -- `successResponse()` and `errorResponse()` are actual functions.
+- **`LlmApiKeySafe` vs `LlmApiKey`** -- always use `LlmApiKeySafe` in API responses. `LlmApiKey` includes encrypted data that must not be sent to clients.
+
+## Git Workflow
+
+- Do not use feature branches for code changes. Always stay on the current branch.

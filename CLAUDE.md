@@ -17,16 +17,29 @@ TypeScript type definitions for ShapeRouter API - LLM structured output platform
 - **Build**: TypeScript compiler (dual ESM/CJS)
 - **Test**: Vitest
 
+## Structure
+
+`src/index.ts` re-exports `@sudobility/shapeshyft_engine/types` (the domain
+shared with ShapeShyft) and adds only ShapeRouter's own types: `LlmApiKey*`,
+`ProviderIpSync*`, `ClientIpDiagnostics`, and the `Endpoint*` types that bind an
+endpoint to an LLM key. To change a shared type (providers, models, pricing,
+projects, analytics, response helpers), change it in `shapeshyft_engine`.
+
+`src/export-surface.test.ts` fails if any name exported before the engine
+extraction disappears. To intentionally remove an export, delete it from
+`tests/fixtures/export-surface.json` in the same change.
+
 ## Project Structure
 
 ```
 src/
-├── index.ts          # All type definitions and response helpers
-└── index.test.ts     # Type tests
-dist/
-├── index.js          # ESM build
-├── index.cjs         # CommonJS build
-└── index.d.ts        # Type declarations
+├── index.ts                # Re-export of engine types + ShapeRouter-only types
+├── index.test.ts           # Type tests
+└── export-surface.test.ts  # Guards the public export list
+scripts/
+└── list-exports.ts         # Prints an entry file's export names
+tests/fixtures/
+└── export-surface.json     # Export names as of the engine extraction
 ```
 
 ## Commands
